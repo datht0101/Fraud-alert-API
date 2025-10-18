@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
 from starlette.responses import Response
 
@@ -8,15 +8,9 @@ from app.deps.users import CurrentUser
 from app.models.reported_phone import ReportedPhone
 from app.schemas.reported_phone import ReportedPhone as ReportedPhoneSchema
 from app.schemas.reported_phone import ReportedPhoneCreate, ReportedPhoneUpdate
+from app.services.phone import normalize_phone
 
 router = APIRouter(prefix="/reported_phones")
-
-
-def normalize_phone(phone: str) -> str:
-    phone = phone.strip().replace(" ", "")
-    if phone.startswith("+84"):
-        phone = "0" + phone[3:]
-    return phone
 
 
 @router.get("/search", response_model=bool)
@@ -67,6 +61,12 @@ async def create_reported_phone(
     session: CurrentAsyncSession,
     user: CurrentUser,
 ):
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to perform this action."
+        )
+        
     reported_phone = ReportedPhone(**reported_phone_in.model_dump())
     session.add(reported_phone)
     await session.commit()
@@ -80,6 +80,12 @@ async def update_reported_phone(
     session: CurrentAsyncSession,
     user: CurrentUser,
 ):
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to perform this action."
+        )
+        
     reported_phone: ReportedPhone | None = await session.get(ReportedPhone, reported_phone_id)
     if not reported_phone:
         raise HTTPException(404)
@@ -109,6 +115,12 @@ async def delete_reported_phone(
     session: CurrentAsyncSession,
     user: CurrentUser,
 ):
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to perform this action."
+        )
+        
     reported_phone: ReportedPhone | None = await session.get(ReportedPhone, reported_phone_id)
     if not reported_phone:
         raise HTTPException(404)
